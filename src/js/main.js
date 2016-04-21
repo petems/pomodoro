@@ -8,6 +8,7 @@ var ipc = require('ipc');
 var fs = require('fs');
 var hrt = require('human-readable-time');
 var settingsWindow = createWindow();
+var stretchesWindow = createStretchesWindow();
 window.$ = window.jQuery = require('jquery');
 
 var timeFormat = new hrt('%mm%:%ss%');
@@ -32,32 +33,41 @@ ipc.on('update-timer', function(event, arg) {
 
 ipc.on('end-timer', function() {
 	$('.timer').circleProgress('value', 1);
-	
+
 	var isRelaxTime = remote.getGlobal('isRelaxTime');
-	
-	dialog.showMessageBox({
-		type: 'info',
-		title: 'Pomodoro',
-		message: (isRelaxTime) ? 'Timer ended it\'s time to relax' : 'Back to work',
-		buttons: ['OK'],
-		noLink: true
-	}, function() {
-		if(isRelaxTime) {
-			$('.timer').circleProgress({fill: { gradient: ["blue", "skyblue"]}});
+
+	if(isRelaxTime) {
+		$('.timer').circleProgress({fill: { gradient: ["blue", "skyblue"]}});
+		if(stretchesWindow) {
+			stretchesWindow.setKiosk(true);
+			stretchesWindow.show();
 		} else {
-			$('#counter').text(remote.getGlobal('pomodoroCount'));
-			$('.timer').circleProgress({fill: { gradient: ["orange", "yellow"]}});
-		}
-		
-		ipc.send('start-timer');
-	});
+			stretchesWindow = createStretchesWindow();
+			stretchesWindow.show();
+			stretchesWindow.setKiosk(true);
+		};
+	} else {
+		$('#counter').text(remote.getGlobal('pomodoroCount'));
+		$('.timer').circleProgress({fill: { gradient: ["orange", "yellow"]}});
+		if(stretchesWindow) {
+			stretchesWindow.hide();
+			stretchesWindow.setKiosk(false);
+		} else {
+			stretchesWindow = createStretchesWindow();
+			stretchesWindow.hide();
+			stretchesWindow.setKiosk(false);
+		};
+	}
+
+	ipc.send('start-timer');
+
 });
 
 $(document).ready(function() {
 	$('div.timer').on('click', function() {
 		ipc.send('start-timer');
 	});
-	
+
 	$('img.settings').on('click', function() {
 		if(settingsWindow) {
 			settingsWindow.show();
@@ -111,6 +121,22 @@ $(document).ready(function() {
 		this.draw();
 	};
 });
+
+function createStretchesWindow() {
+	var win = new browserWindow({
+		width: 700,
+		height: 700,
+		resizable: true,
+  	title: 'Time to Stretch!',
+  	center: true,
+  	frame: false,
+  	show: false,
+	});
+
+	win.loadUrl('file://' + __dirname + '/stretches.html');
+
+	return win;
+}
 
 // For creating settings window
 function createWindow() {
