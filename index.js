@@ -24,8 +24,9 @@ let isRelaxTime = false;
 let showTimer = true;
 let launchOnStartup = false;
 var useCustomAlert = false;
-var customAlertFilePath = 'dummy.html';
+var customAlertFilePath = 'stretches.html';
 let sender;
+let debug = false;
 
 let mb = menubar({
 	'preloadWindow': true
@@ -49,6 +50,7 @@ process.on('uncaughtException', (err) => {
 
 mb.app.on('ready', () => {
 	mb.ready = true;
+	debug && mb.window.webContents.openDevTools();
 	getConfig();
 
 	global.timer = new Stopwatch(workTimer);
@@ -169,9 +171,6 @@ function getConfig() {
 	}
 
 	global.useCustomAlert = useCustomAlert;
-	if (useCustomAlert && mb.ready) {
-		updateAlertWindow();
-	}
 }
 
 function getProgress() {
@@ -195,34 +194,21 @@ function getProgress() {
 	return progress;
 }
 
-function updateAlertWindow() {
-	var alertWindow = global.alertWindow;
-	if (alertWindow) {
-		alertWindow.close();
-	}
-
-	alertWindow = new browserWindow({
-		width: 800,
-		height: 600,
-		frame: false,
-		show: false
-	});
-	alertWindow.loadUrl('file://' + __dirname + '/templates/' + customAlertFilePath);
-	alertWindow.on('blur', () => {
-		alertWindow.setAlwaysOnTop(false);
-	});
-	global.alertWindow = alertWindow;
-}
 
 ipc.on('show-alert-window', () => {
-	global.alertWindow.show();
-	global.alertWindow.setAlwaysOnTop(true);
-	global.alertWindow.maximize();
+	let win = createCustomWindow(customAlertFilePath);
+	win.webContents.on("did-finish-load", () => {
+		showMaximizedWindow(win);
+		
+	});
+	global.alertWindow = win;
 });
 
 function hideAlertWindow() {
-	if (global.alertWindow)
-		global.alertWindow.hide();
+	if (global.alertWindow) {
+		global.alertWindow.close();
+		global.alertWindow = null;
+	}
 }
 ipc.on('hide-alert-window', hideAlertWindow);
 
@@ -231,23 +217,32 @@ ipc.on('test-alert-window', (event, arg) => {
 		return;
 	}
 
+	let win = createCustomWindow(arg.file);
+	win.webContents.on("did-finish-load", () => {
+		showMaximizedWindow(win);
+		setTimeout(() => {
+			win.close();
+		}, arg.timeout);
+	});
+});
+
+function createCustomWindow(templateName) {
 	var win = new browserWindow({
 		width: 800,
 		height: 600,
 		frame: false,
 		show: false
 	});
-	win.loadUrl('file://' + __dirname + '/templates/' + arg.file);
+	win.loadUrl('file://' + __dirname + '/templates/' + templateName);
 	win.on('blur', () => {
 		win.setAlwaysOnTop(false);
 	});
-	win.show();
+	debug && win.webContents.openDevTools();
+	return win;
+}
+
+function showMaximizedWindow(win) {
 	win.setAlwaysOnTop(true);
 	win.maximize();
-
-	setTimeout(() => {
-		win.close();
-	}, arg.timeout);
-
-});
-
+	win.show();
+}

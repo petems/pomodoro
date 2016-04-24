@@ -39,7 +39,7 @@ ipc.on('update-timer', function(event, arg) {
 
 ipc.on('end-timer', function() {
 	$('.timer').circleProgress('value', 1);
-	
+
 	var isRelaxTime = remote.getGlobal('isRelaxTime');
 	var customAlert = remote.getGlobal('useCustomAlert');
 	
@@ -75,7 +75,7 @@ $(document).ready(function() {
 	$('div.timer').on('click', function() {
 		ipc.send('start-timer');
 	});
-	
+
 	$('img.settings').on('click', function() {
 		if(settingsWindow) {
 			settingsWindow.show();
